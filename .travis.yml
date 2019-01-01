@@ -8,9 +8,9 @@ addons:
       - bats-core
 rust:
   - stable
-  - 1.28.0
+#  - 1.28.0
   - beta
-  - nightly
+#  - nightly
 
 stages:
   - check
@@ -31,3 +31,12 @@ jobs:
         - (cd . && cargo fmt --all -- --check)
         - (cd ./testdata/simple && cargo fmt --all -- --check)
         - (cd ./testdata/workspace && cargo fmt --all -- --check)
+
+before_script:
+  - rustup target add aarch64-apple-ios x86_64-apple-ios
+
+script:
+  - set -e
+  - cargo build
+  - export PATH="$PWD/target/debug:$PATH"
+  - cargo lipo --version
