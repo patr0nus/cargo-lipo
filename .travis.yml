@@ -1,5 +1,21 @@
 language: rust
 
+os: osx
+osx_image: xcode10.1
+addons:
+  homebrew:
+    packages:
+      - bats-core
+rust:
+  - stable
+  - 1.28.0
+  - beta
+  - nightly
+
+stages:
+  - check
+  - test
+
 jobs:
   include:
     - stage: check
@@ -15,16 +31,3 @@ jobs:
         - (cd . && cargo fmt --all -- --check)
         - (cd ./testdata/simple && cargo fmt --all -- --check)
         - (cd ./testdata/workspace && cargo fmt --all -- --check)
-    - stage: test
-      os: osx
-      osx_image: xcode10.1
-      addons:
-        homebrew:
-          packages:
-            - bats-core
-      rust:
-        - stable
-        - 1.28.0
-        - beta
-        - nightly
-      script: ./deploy
