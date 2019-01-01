@@ -1,29 +1,30 @@
 language: rust
 
-sudo: false
-
-# run builds for all the trains (and more)
-rust:
-  - nightly
-  - beta
-  # check it compiles on the latest stable compiler
-  - stable
-  # and the first stable one (this should be bumped as the minimum
-  # Rust version required changes)
-  - 1.31.1
-
-# load travis-cargo
-before_script:
-  - |
-      pip install 'travis-cargo<0.2' --user &&
-      export PATH=$HOME/.local/bin:$PATH
-
-# the main build
-script:
-  - |
-      travis-cargo build
-
-env:
-  global:
-    # override the default `--features unstable` used for the nightly branch (optional)
-    - TRAVIS_CARGO_NIGHTLY_FEATURE=""
+jobs:
+  include:
+    - stage: check
+      os: linux
+      dist: xenial
+      rust: stable
+      before_script:
+        - rustup component add rustfmt clippy
+      script:
+        - cargo clippy --all --manifest-path ./Cargo.toml -- --deny warnings
+        - cargo clippy --all --manifest-path ./testdata/simple/Cargo.toml -- --deny warnings
+        - cargo clippy --all --manifest-path ./testdata/workspace/Cargo.toml -- --deny warnings
+        - (cd . && cargo fmt --all -- --check)
+        - (cd ./testdata/simple && cargo fmt --all -- --check)
+        - (cd ./testdata/workspace && cargo fmt --all -- --check)
+    - stage: test
+      os: osx
+      osx_image: xcode10.1
+      addons:
+        homebrew:
+          packages:
+            - bats-core
+      rust:
+        - stable
+        - 1.28.0
+        - beta
+        - nightly
+      script: ./deploy
