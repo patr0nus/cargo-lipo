@@ -60,6 +60,10 @@ struct Invocation {
     #[structopt(conflicts_with = "release", conflicts_with = "targets")]
     xcode_integ: bool,
 
+    /// Allow building `bin` targets
+    #[structopt(long)]
+    allow_bin: bool,
+
     /// Don't run `cargo clean` when XCode cleans the project.
     #[structopt(long = "xcode-ignore-clean")]
     #[structopt(requires = "xcode_integ")]

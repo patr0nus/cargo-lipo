@@ -20,21 +20,31 @@ impl<'a> Meta<'a> {
         meta: &'a cargo_metadata::Metadata,
     ) -> Result<Meta<'a>> {
         let package_names: Vec<_>;
-        let staticlib_required;
+        let staticlib_or_bin_required;
+        let mut allowed_crate_types = vec!["staticlib"];
+        if invocation.allow_bin {
+            allowed_crate_types.push("bin");
+        }
+        let allowed_crate_types_string = allowed_crate_types
+            .iter()
+            .map(|t| format!("`{}`", t))
+            .collect::<Vec<String>>()
+            .join(" or ");
 
         if !invocation.packages.is_empty() {
             package_names = invocation.packages.iter().map(|p| p.as_str()).collect();
-            staticlib_required = true;
+            staticlib_or_bin_required = true;
         } else {
             package_names = meta.workspace_members.iter().map(|m| m.name()).collect();
             // Require a staticlib for single-member workspaces unless `--all` was specified.
-            staticlib_required = meta.workspace_members.len() == 1 && !invocation.all;
+            staticlib_or_bin_required = meta.workspace_members.len() == 1 && !invocation.all;
         }
 
         debug!(
-            "Considering package(s) {:?}, `staticlib` target {}",
+            "Considering package(s) {:?}, {:?} {}",
             package_names,
-            if staticlib_required { "required" } else { "not required" }
+            allowed_crate_types_string,
+            if staticlib_or_bin_required { "required" } else { "not required" }
         );
 
         let mut packages = vec![];
@@ -45,32 +55,39 @@ impl<'a> Meta<'a> {
                 None => bail!("No package metadata found for {:?}", name),
             };
 
-            let lib_targets: Vec<_> = package
+            let targets: Vec<_> = package
                 .targets
                 .iter()
-                .filter(|t| t.kind.iter().any(|k| k == "staticlib"))
+                .filter(|t| t.kind.iter().any(|k| allowed_crate_types.contains(&k.as_str())))
                 .collect();
 
-            match lib_targets.as_slice() {
+            match targets.as_slice() {
                 [] => {
-                    if !staticlib_required {
-                        debug!("Ignoring {:?} because it does not have a `staticlib` target", name);
+                    if !staticlib_or_bin_required {
+                        debug!(
+                            "Ignoring {:?} because it does not have a {} target",
+                            allowed_crate_types_string, name
+                        );
                         continue;
                     }
                     bail!("No library target found for {:?}", name);
                 }
                 [target] => {
-                    if target.crate_types.iter().any(|ct| ct == "staticlib") {
+                    if target
+                        .crate_types
+                        .iter()
+                        .any(|ct| allowed_crate_types.contains(&ct.as_str()))
+                    {
                         packages.push((package, target.name.replace('-', "_")));
                     } else {
-                        if !staticlib_required {
+                        if !staticlib_or_bin_required {
                             debug!(
-                                "Ignoring {:?} because it does not have a `staticlib` crate type",
-                                name
+                                "Ignoring {:?} because it does not have a {} crate type",
+                                allowed_crate_types_string, name
                             );
                             continue;
                         }
-                        bail!("No staticlib crate type found for {:?}", name);
+                        bail!("No {} crate type found for {:?}", allowed_crate_types_string, name);
                     }
                 }
                 _ => bail!("Found multiple lib targets for {:?}", name),
