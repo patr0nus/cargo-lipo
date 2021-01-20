@@ -61,6 +61,7 @@ struct Invocation {
     xcode_integ: bool,
 
     /// Allow building `bin` targets
+    #[structopt(long = "allow-bin")]
     #[structopt(long)]
     allow_bin: bool,
 

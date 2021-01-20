@@ -36,7 +36,7 @@ impl<'a> Meta<'a> {
             staticlib_or_bin_required = true;
         } else {
             package_names = meta.workspace_members.iter().map(|m| m.name()).collect();
-            // Require a staticlib for single-member workspaces unless `--all` was specified.
+            // Require a staticlib or bin for single-member workspaces unless `--all` was specified.
             staticlib_or_bin_required = meta.workspace_members.len() == 1 && !invocation.all;
         }
 
@@ -103,7 +103,8 @@ impl<'a> Meta<'a> {
 
         if packages.is_empty() {
             bail!(
-                "Did not find any packages with a `staticlib` target, considered {:?}",
+                "Did not find any packages with a {} target, considered {:?}",
+                allowed_crate_types_string,
                 package_names
             );
         }

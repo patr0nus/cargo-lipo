@@ -14,7 +14,7 @@ impl<'a> Cargo<'a> {
     }
 
     pub(crate) fn build_lib(&self, name: &str, target: &str) -> Result<()> {
-        crate::exec::run(self.prepare_build_lib(name, target))
+        crate::exec::run(self.prepare_build(name, target))
     }
 
     pub(crate) fn profile(&self) -> &str {
@@ -66,10 +66,10 @@ impl<'a> Cargo<'a> {
         cmd
     }
 
-    fn prepare_build_lib(&self, name: &str, target: &str) -> Command {
+    fn prepare_build(&self, name: &str, target: &str) -> Command {
         let mut cmd = self.prepare_target("build", name, target);
 
-        cmd.arg("--lib");
+        // cmd.arg(arg);
 
         if self.invocation.all_features {
             cmd.arg("--all-features");

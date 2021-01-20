@@ -27,7 +27,8 @@ fn should_update_output(
 
 pub(crate) fn build(cargo: &Cargo, meta: &Meta, targets: &[impl AsRef<str>]) -> Result<()> {
     for package in meta.packages() {
-        let lib_name = format!("lib{}.a", package.lib_name());
+        // TODO: not working for staticlib
+        let lib_name = format!("{}", package.lib_name());
         let mut inputs = vec![];
 
         for target in targets {
