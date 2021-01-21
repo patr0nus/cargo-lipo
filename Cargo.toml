@@ -21,3 +21,4 @@ env_logger = "0.6"
 failure = { version = "0.1", default-features = false, features = ["std"] }
 log = "0.4"
 structopt = "0.2"
+reflink = "0.1"

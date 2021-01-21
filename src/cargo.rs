@@ -13,8 +13,8 @@ impl<'a> Cargo<'a> {
         Cargo { cargo: env::var_os("CARGO").unwrap_or_else(|| "cargo".into()), invocation }
     }
 
-    pub(crate) fn build_lib(&self, name: &str, target: &str) -> Result<()> {
-        crate::exec::run(self.prepare_build_lib(name, target))
+    pub(crate) fn build_bin(&self, name: &str, target: &str) -> Result<()> {
+        crate::exec::run(self.prepare_build_bin(name, target))
     }
 
     pub(crate) fn profile(&self) -> &str {
@@ -42,7 +42,7 @@ impl<'a> Cargo<'a> {
             cmd.arg("--frozen");
         }
 
-        if !self.invocation.no_sanitize_env {
+        if self.invocation.sanitize_env {
             crate::xcode::sanitize_env(&mut cmd);
         }
 
@@ -57,7 +57,7 @@ impl<'a> Cargo<'a> {
             cmd.arg("--manifest-path").arg(path);
         }
 
-        cmd.arg("-p").arg(name).arg("--target").arg(target);
+        cmd.arg("--bin").arg(name).arg("--target").arg(target);
 
         if self.invocation.release {
             cmd.arg("--release");
@@ -66,10 +66,8 @@ impl<'a> Cargo<'a> {
         cmd
     }
 
-    fn prepare_build_lib(&self, name: &str, target: &str) -> Command {
+    fn prepare_build_bin(&self, name: &str, target: &str) -> Command {
         let mut cmd = self.prepare_target("build", name, target);
-
-        cmd.arg("--lib");
 
         if self.invocation.all_features {
             cmd.arg("--all-features");

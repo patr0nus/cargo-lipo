@@ -17,7 +17,6 @@ use structopt::StructOpt;
 mod cargo;
 mod exec;
 mod lipo;
-mod meta;
 mod xcode;
 
 type Result<T> = std::result::Result<T, failure::Error>;
@@ -65,10 +64,10 @@ struct Invocation {
     #[structopt(requires = "xcode_integ")]
     xcode_ignore_clean: bool,
 
-    /// Don't remove environment variables that can cause issues with build scripts when calling
+    /// Remove environment variables that can cause issues with build scripts when calling
     /// cargo.
     #[structopt(long = "no-sanitize-env")]
-    no_sanitize_env: bool,
+    sanitize_env: bool,
 
     /// Build artifacts in release mode, with optimizations
     #[structopt(long)]
@@ -86,14 +85,9 @@ struct Invocation {
     #[structopt(long, short, value_name = "N")]
     jobs: Option<u32>,
 
-    /// Build all packages in the workspace (that have a `staticlib` target)
-    #[structopt(long)]
-    all: bool,
-
-    /// Package(s) to build (must have a `staticlib` target)
-    #[structopt(short, long = "package", value_name = "NAME")]
-    #[structopt(conflicts_with = "all")]
-    packages: Vec<String>,
+    /// Binary to build
+    #[structopt(long, value_name = "BIN_NAME")]
+    bin: String,
 
     /// Activate all available features
     #[structopt(long = "all-features")]
@@ -161,12 +155,19 @@ fn run(invocation: Invocation) -> Result<()> {
 
     trace!("Metadata: {:#?}", meta);
 
-    let meta = meta::Meta::new(&invocation, &meta)?;
+    let bin_name = invocation.bin.clone();
+    let target_dir = PathBuf::from(meta.target_directory.as_str());
 
     if invocation.xcode_integ {
-        xcode::integ(&meta, invocation)
+        xcode::integ(&bin_name, target_dir.as_ref(), invocation)
     } else {
-        lipo::build(&cargo::Cargo::new(&invocation), &meta, &invocation.targets)
+        let _ = lipo::build(
+            &cargo::Cargo::new(&invocation),
+            &bin_name,
+            target_dir.as_ref(),
+            &invocation.targets,
+        )?;
+        Ok(())
     }
 }
 

@@ -1,11 +1,24 @@
 use crate::{Invocation, Result};
-use crate::meta::Meta;
 use failure::{bail, ResultExt};
 use log::warn;
-use std::env;
+use std::{env, fs};
 use std::process::Command;
+use std::path::{Path, PathBuf};
 
-pub(crate) fn integ(meta: &Meta, mut invocation: Invocation) -> Result<()> {
+pub fn copy_file<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> Result<()> {
+    use reflink::reflink;
+    let (from, to) = (from.as_ref(), to.as_ref());
+    let _ = std::fs::remove_file(to);
+    fs::create_dir_all(to.parent().unwrap()).with_context(|e| {
+        format!("Creating directory for dest file {:?} failed: {}", to.display(), e)
+    })?;
+
+    reflink(from, to)
+        .with_context(|e| format!("Failed to copy from {:?} to {:?}: {}", from, to, e))?;
+    Ok(())
+}
+
+pub(crate) fn integ(bin_name: &str, target_dir: &Path, mut invocation: Invocation) -> Result<()> {
     if is_release_configuration() {
         invocation.release = true;
     }
@@ -14,12 +27,21 @@ pub(crate) fn integ(meta: &Meta, mut invocation: Invocation) -> Result<()> {
 
     match env::var("ACTION").with_context(|e| format!("Failed to read $ACTION: {}", e))?.as_str() {
         "build" | "install" => {
-            crate::lipo::build(&cargo, meta, &targets_from_env()?)?;
+            let output_path =
+                crate::lipo::build(&cargo, bin_name, target_dir, &targets_from_env()?)?;
+            let executable_path = executable_path_from_env()?;
+            copy_file(output_path, executable_path)?;
         }
         action => warn!("Unsupported XCode action: {:?}", action),
     }
 
     Ok(())
+}
+
+fn executable_path_from_env() -> Result<PathBuf> {
+    let built_products_dir = env::var("BUILT_PRODUCTS_DIR")?;
+    let executable_path = env::var("EXECUTABLE_PATH")?;
+    Ok(PathBuf::from(built_products_dir).join(executable_path))
 }
 
 fn targets_from_env() -> Result<Vec<String>> {
